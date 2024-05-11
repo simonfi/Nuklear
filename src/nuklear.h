@@ -5280,8 +5280,10 @@ enum nk_window_flags {
     /* Directly closes and frees the window at the end of the frame */
     NK_WINDOW_MINIMIZED     = NK_FLAG(15),
     /* marks the window as minimized */
-    NK_WINDOW_REMOVE_ROM    = NK_FLAG(16)
+    NK_WINDOW_REMOVE_ROM    = NK_FLAG(16),
     /* Removes read only mode at the end of the window */
+    NK_WINDOW_NO_FOCUS          = NK_FLAG(17)
+    /* Window never becomes first responder of keyboard input */)
 };
 
 struct nk_popup_state {

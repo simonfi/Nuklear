@@ -181,7 +181,7 @@ nk_begin_titled(struct nk_context *ctx, const char *name, const char *title,
         win->name_string[name_length] = 0;
         win->popup.win = 0;
         win->widgets_disabled = nk_false;
-        if (!ctx->active)
+        if (!ctx->active && !(flags & NK_WINDOW_NO_FOCUS))
             ctx->active = win;
     } else {
         /* update window */
@@ -198,7 +198,7 @@ nk_begin_titled(struct nk_context *ctx, const char *name, const char *title,
          *      provided demo backends). */
         NK_ASSERT(win->seq != ctx->seq);
         win->seq = ctx->seq;
-        if (!ctx->active && !(win->flags & NK_WINDOW_HIDDEN)) {
+        if (!ctx->active && !(win->flags & (NK_WINDOW_HIDDEN | NK_WINDOW_NO_FOCUS))) {
             ctx->active = win;
             ctx->end = win;
         }
