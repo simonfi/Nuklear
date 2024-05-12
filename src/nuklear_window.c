@@ -86,13 +86,18 @@ nk_insert_window(struct nk_context *ctx, struct nk_window *win,
     if (loc == NK_INSERT_BACK) {
         struct nk_window *end;
         end = ctx->end;
-        end->flags |= NK_WINDOW_ROM;
-        end->next = win;
+        if (!(win->flags & NK_WINDOW_NO_FOCUS)) {
+		end->flags |= NK_WINDOW_ROM;
+	}
+
+	end->next = win;
         win->prev = ctx->end;
         win->next = 0;
         ctx->end = win;
-        ctx->active = ctx->end;
-        ctx->end->flags &= ~(nk_flags)NK_WINDOW_ROM;
+        if (!(win->flags & NK_WINDOW_NO_FOCUS)) {
+    		ctx->active = ctx->end;
+	}
+	ctx->end->flags &= ~(nk_flags)NK_WINDOW_ROM;
     } else {
         /*ctx->end->flags |= NK_WINDOW_ROM;*/
         ctx->begin->prev = win;
@@ -181,8 +186,9 @@ nk_begin_titled(struct nk_context *ctx, const char *name, const char *title,
         win->name_string[name_length] = 0;
         win->popup.win = 0;
         win->widgets_disabled = nk_false;
-        if (!ctx->active && !(flags & NK_WINDOW_NO_FOCUS))
+        if (!ctx->active && !(flags & NK_WINDOW_NO_FOCUS)) {
             ctx->active = win;
+	}
     } else {
         /* update window */
         win->flags &= ~(nk_flags)(NK_WINDOW_PRIVATE-1);
@@ -264,8 +270,11 @@ nk_begin_titled(struct nk_context *ctx, const char *name, const char *title,
         if (iter && !(win->flags & NK_WINDOW_ROM) && (win->flags & NK_WINDOW_BACKGROUND)) {
             win->flags |= (nk_flags)NK_WINDOW_ROM;
             iter->flags &= ~(nk_flags)NK_WINDOW_ROM;
-            ctx->active = iter;
-            if (!(iter->flags & NK_WINDOW_BACKGROUND)) {
+            if (!(iter->flags & NK_WINDOW_NO_FOCUS)) {
+	        ctx->active = iter;
+	    }
+	    
+    	    if (!(iter->flags & NK_WINDOW_BACKGROUND)) {
                 /* current window is active in that position so transfer to top
                  * at the highest priority in stack */
                 nk_remove_window(ctx, iter);
@@ -280,10 +289,13 @@ nk_begin_titled(struct nk_context *ctx, const char *name, const char *title,
                     nk_insert_window(ctx, win, NK_INSERT_BACK);
                 }
                 win->flags &= ~(nk_flags)NK_WINDOW_ROM;
-                ctx->active = win;
+                if (!(win->flags & NK_WINDOW_NO_FOCUS)) {
+			ctx->active = win;
+		}
             }
-            if (ctx->end != win && !(win->flags & NK_WINDOW_BACKGROUND))
+            if (ctx->end != win && !(win->flags & NK_WINDOW_BACKGROUND) && !(ctx->end->flags & NK_WINDOW_NO_FOCUS)) {
                 win->flags |= NK_WINDOW_ROM;
+	    }
         }
     }
     win->layout = (struct nk_panel*)nk_create_panel(ctx);
@@ -661,9 +673,11 @@ nk_window_set_focus(struct nk_context *ctx, const char *name)
     NK_ASSERT(ctx);
     if (!ctx) return;
 
+
     title_len = (int)nk_strlen(name);
     title_hash = nk_murmur_hash(name, (int)title_len, NK_WINDOW_TITLE);
     win = nk_find_window(ctx, title_hash, name);
+    if (win && win->flags & NK_WINDOW_NO_FOCUS) return;
     if (win && ctx->end != win) {
         nk_remove_window(ctx, win);
         nk_insert_window(ctx, win, NK_INSERT_BACK);

@@ -363,6 +363,7 @@ nk_textedit_text(struct nk_text_edit *state, const char *text, int total_len)
 
     NK_ASSERT(state);
     NK_ASSERT(text);
+
     if (!text || !total_len || state->mode == NK_TEXT_EDIT_MODE_VIEW) return;
 
     glyph_len = nk_utf_decode(text, &unicode, total_len);

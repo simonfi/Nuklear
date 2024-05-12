@@ -3276,7 +3276,8 @@ enum nk_edit_flags {
     NK_EDIT_NO_HORIZONTAL_SCROLL    = NK_FLAG(8),
     NK_EDIT_ALWAYS_INSERT_MODE      = NK_FLAG(9),
     NK_EDIT_MULTILINE               = NK_FLAG(10),
-    NK_EDIT_GOTO_END_ON_ACTIVATE    = NK_FLAG(11)
+    NK_EDIT_GOTO_END_ON_ACTIVATE    = NK_FLAG(11),
+    NK_EDIT_IGNORE_DEACTIVATE       = NK_FLAG(12)
 };
 enum nk_edit_types {
     NK_EDIT_SIMPLE  = NK_EDIT_ALWAYS_INSERT_MODE,
@@ -5283,7 +5284,7 @@ enum nk_window_flags {
     NK_WINDOW_REMOVE_ROM    = NK_FLAG(16),
     /* Removes read only mode at the end of the window */
     NK_WINDOW_NO_FOCUS          = NK_FLAG(17)
-    /* Window never becomes first responder of keyboard input */)
+    /* Window never becomes first responder of keyboard input */
 };
 
 struct nk_popup_state {

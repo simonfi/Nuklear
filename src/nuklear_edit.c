@@ -189,7 +189,7 @@ nk_do_edit(nk_flags *state, struct nk_command_buffer *out,
     /* update edit state */
     prev_state = (char)edit->active;
     is_hovered = (char)nk_input_is_mouse_hovering_rect(in, bounds);
-    if (in && in->mouse.buttons[NK_BUTTON_LEFT].clicked && in->mouse.buttons[NK_BUTTON_LEFT].down) {
+    if (!(flags & NK_EDIT_IGNORE_DEACTIVATE && edit->active) && in && in->mouse.buttons[NK_BUTTON_LEFT].clicked && in->mouse.buttons[NK_BUTTON_LEFT].down) {
         edit->active = NK_INBOX(in->mouse.pos.x, in->mouse.pos.y,
                                 bounds.x, bounds.y, bounds.w, bounds.h);
     }
@@ -221,7 +221,7 @@ nk_do_edit(nk_flags *state, struct nk_command_buffer *out,
     /* handle user input */
     if (edit->active && in)
     {
-        int shift_mod = in->keyboard.keys[NK_KEY_SHIFT].down;
+    	    int shift_mod = in->keyboard.keys[NK_KEY_SHIFT].down;
         const float mouse_x = (in->mouse.pos.x - area.x) + edit->scrollbar.x;
         const float mouse_y = (in->mouse.pos.y - area.y) + edit->scrollbar.y;
 
@@ -253,7 +253,7 @@ nk_do_edit(nk_flags *state, struct nk_command_buffer *out,
             }
         }
         if (old_mode != edit->mode) {
-            in->keyboard.text_len = 0;
+    		in->keyboard.text_len = 0;
         }}
 
         /* text input */
@@ -767,6 +767,7 @@ nk_edit_buffer(struct nk_context *ctx, nk_flags flags,
     struct nk_rect bounds;
 
     nk_flags ret_flags = 0;
+    nk_flags ignore_deactivate = 0;
     unsigned char prev_state;
     nk_hash hash;
 
@@ -801,10 +802,33 @@ nk_edit_buffer(struct nk_context *ctx, nk_flags flags,
     } else edit->active = nk_false;
     edit->mode = win->edit.mode;
 
+    /* if user has clicked a window that cannot get focus, ignore deactivate */
+    if (in && in->mouse.buttons[NK_BUTTON_LEFT].clicked && in->mouse.buttons[NK_BUTTON_LEFT].down) {
+	nk_window *iter = ctx->begin;
+        nk_window *clicked = 0;
+        float h = ctx->style.font->height + 2.0f * style->window.header.padding.y +
+            (2.0f * style->window.header.label_padding.y);
+
+	while (iter) {
+                struct nk_rect iter_bounds = (!(iter->flags & NK_WINDOW_MINIMIZED))?
+                    iter->bounds: nk_rect(iter->bounds.x, iter->bounds.y, iter->bounds.w, h);
+
+		 if (NK_INBOX(in->mouse.buttons[NK_BUTTON_LEFT].clicked_pos.x,in->mouse.buttons[NK_BUTTON_LEFT].clicked_pos.y,iter_bounds.x,iter_bounds.y,iter_bounds.w,iter_bounds.h))
+			 clicked = iter;
+
+		iter = iter->next;
+	}
+
+        if (clicked && clicked->flags & NK_WINDOW_NO_FOCUS) {
+    		ignore_deactivate = NK_EDIT_IGNORE_DEACTIVATE;
+	}
+    }
+
+ 
     filter = (!filter) ? nk_filter_default: filter;
     prev_state = (unsigned char)edit->active;
     in = (flags & NK_EDIT_READ_ONLY) ? 0: in;
-    ret_flags = nk_do_edit(&ctx->last_widget_state, &win->buffer, bounds, flags,
+    ret_flags = nk_do_edit(&ctx->last_widget_state, &win->buffer, bounds, flags | ignore_deactivate,
                     filter, edit, &style->edit, in, style->font);
 
     if (ctx->last_widget_state & NK_WIDGET_STATE_HOVER)
