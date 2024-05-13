@@ -5283,8 +5283,10 @@ enum nk_window_flags {
     /* marks the window as minimized */
     NK_WINDOW_REMOVE_ROM    = NK_FLAG(16),
     /* Removes read only mode at the end of the window */
-    NK_WINDOW_NO_FOCUS          = NK_FLAG(17)
+    NK_WINDOW_NO_FOCUS      = NK_FLAG(17),
     /* Window never becomes first responder of keyboard input */
+    NK_WINDOW_CREATED       = NK_FLAG(18)
+    /* Flag automatically set if window was created on call to nk_begin() */
 };
 
 struct nk_popup_state {
