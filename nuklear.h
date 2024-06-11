@@ -27991,10 +27991,11 @@ nk_edit_string(struct nk_context *ctx, nk_flags flags,
     win = ctx->current;
     hash = win->edit.seq;
     edit = &ctx->text_edit;
-    nk_textedit_clear_state(&ctx->text_edit, (flags & NK_EDIT_MULTILINE)?
-        NK_TEXT_EDIT_MULTI_LINE: NK_TEXT_EDIT_SINGLE_LINE, filter);
 
     if (win->edit.active && hash == win->edit.name) {
+        nk_textedit_clear_state(&ctx->text_edit, (flags & NK_EDIT_MULTILINE)?
+            NK_TEXT_EDIT_MULTI_LINE: NK_TEXT_EDIT_SINGLE_LINE, filter);
+
         if (flags & NK_EDIT_NO_CURSOR)
             edit->cursor = nk_utf_len(memory, *len);
         else edit->cursor = win->edit.cursor;
