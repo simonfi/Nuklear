@@ -133,7 +133,7 @@ nk_remove_window(struct nk_context *ctx, struct nk_window *win)
     }
 
     if (win == ctx->active || !ctx->active) {
-        if (!(ctx->end->flags & NK_WINDOW_NO_FOCUS)) {
+        if (ctx->end != NULL && !(ctx->end->flags & NK_WINDOW_NO_FOCUS)) {
             ctx->active = ctx->end;
         }
 
