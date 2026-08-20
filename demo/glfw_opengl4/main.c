@@ -21,7 +21,6 @@
 #define NK_INCLUDE_DEFAULT_FONT
 #define NK_IMPLEMENTATION
 #define NK_GLFW_GL4_IMPLEMENTATION
-#define NK_KEYSTATE_BASED_INPUT
 #include "../../nuklear.h"
 #include "nuklear_glfw_gl4.h"
 
@@ -42,7 +41,8 @@
 /*#define INCLUDE_STYLE */
 /*#define INCLUDE_CALCULATOR */
 /*#define INCLUDE_CANVAS */
-/*#define INCLUDE_OVERVIEW */
+#define INCLUDE_OVERVIEW
+/*#define INCLUDE_CONFIGURATOR */
 /*#define INCLUDE_NODE_EDITOR */
 
 #ifdef INCLUDE_ALL
@@ -50,6 +50,7 @@
   #define INCLUDE_CALCULATOR
   #define INCLUDE_CANVAS
   #define INCLUDE_OVERVIEW
+  #define INCLUDE_CONFIGURATOR
   #define INCLUDE_NODE_EDITOR
 #endif
 
@@ -64,6 +65,9 @@
 #endif
 #ifdef INCLUDE_OVERVIEW
   #include "../../demo/common/overview.c"
+#endif
+#ifdef INCLUDE_CONFIGURATOR
+  #include "../../demo/common/style_configurator.c"
 #endif
 #ifdef INCLUDE_NODE_EDITOR
   #include "../../demo/common/node_editor.c"
@@ -86,6 +90,11 @@ int main(void)
     struct nk_colorf bg;
     struct nk_image img;
 
+    #ifdef INCLUDE_CONFIGURATOR
+    static struct nk_color color_table[NK_COLOR_COUNT];
+    memcpy(color_table, nk_default_color_style, sizeof(color_table));
+    #endif
+
     /* GLFW */
     glfwSetErrorCallback(error_callback);
     if (!glfwInit()) {
@@ -98,12 +107,12 @@ int main(void)
 #ifdef __APPLE__
     glfwWindowHint(GLFW_OPENGL_FORWARD_COMPAT, GL_TRUE);
 #endif
-    win = glfwCreateWindow(WINDOW_WIDTH, WINDOW_HEIGHT, "Demo", NULL, NULL);
+    win = glfwCreateWindow(WINDOW_WIDTH, WINDOW_HEIGHT, "glfw_opengl4", NULL, NULL);
     glfwMakeContextCurrent(win);
-    glfwGetWindowSize(win, &width, &height);
+    glfwGetFramebufferSize(win, &width, &height);
 
     /* OpenGL */
-    glViewport(0, 0, WINDOW_WIDTH, WINDOW_HEIGHT);
+    glViewport(0, 0, width, height);
     glewExperimental = 1;
     if (glewInit() != GLEW_OK) {
         fprintf(stderr, "Failed to setup GLEW\n");
@@ -140,6 +149,11 @@ int main(void)
     {
         /* Input */
         glfwPollEvents();
+        if (glfwGetKey(win, GLFW_KEY_Q) == GLFW_PRESS &&
+             (glfwGetKey(win, GLFW_KEY_LEFT_CONTROL) == GLFW_PRESS ||
+              glfwGetKey(win, GLFW_KEY_RIGHT_CONTROL) == GLFW_PRESS)) {
+            glfwSetWindowShouldClose(win, nk_true);
+        }
         nk_glfw3_new_frame();
 
         /* GUI */
@@ -198,13 +212,16 @@ int main(void)
         #ifdef INCLUDE_OVERVIEW
           overview(ctx);
         #endif
+        #ifdef INCLUDE_CONFIGURATOR
+          style_configurator(ctx, color_table);
+        #endif
         #ifdef INCLUDE_NODE_EDITOR
           node_editor(ctx);
         #endif
         /* ----------------------------------------- */
 
         /* Draw */
-        glfwGetWindowSize(win, &width, &height);
+        glfwGetFramebufferSize(win, &width, &height);
         glViewport(0, 0, width, height);
         glClear(GL_COLOR_BUFFER_BIT);
         glClearColor(bg.r, bg.g, bg.b, bg.a);

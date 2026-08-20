@@ -153,6 +153,7 @@ nk_nonblock_begin(struct nk_context *ctx,
             root->flags |= NK_WINDOW_REMOVE_ROM;
             root = root->parent;
         }
+        win->popup.buf.active = 0;
         return is_active;
     }
     popup->bounds = body;
@@ -230,7 +231,7 @@ nk_popup_end(struct nk_context *ctx)
     nk_push_scissor(&win->buffer, win->layout->clip);
 }
 NK_API void
-nk_popup_get_scroll(struct nk_context *ctx, nk_uint *offset_x, nk_uint *offset_y)
+nk_popup_get_scroll(const struct nk_context *ctx, nk_uint *offset_x, nk_uint *offset_y)
 {
     struct nk_window *popup;
 

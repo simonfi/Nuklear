@@ -29,7 +29,8 @@
 /*#define INCLUDE_STYLE */
 /*#define INCLUDE_CALCULATOR */
 /*#define INCLUDE_CANVAS */
-/*#define INCLUDE_OVERVIEW */
+#define INCLUDE_OVERVIEW
+/*#define INCLUDE_CONFIGURATOR */
 /*#define INCLUDE_NODE_EDITOR */
 
 #ifdef INCLUDE_ALL
@@ -37,6 +38,7 @@
   #define INCLUDE_CALCULATOR
   #define INCLUDE_CANVAS
   #define INCLUDE_OVERVIEW
+  #define INCLUDE_CONFIGURATOR
   #define INCLUDE_NODE_EDITOR
 #endif
 
@@ -51,6 +53,9 @@
 #endif
 #ifdef INCLUDE_OVERVIEW
   #include "../../demo/common/overview.c"
+#endif
+#ifdef INCLUDE_CONFIGURATOR
+  #include "../../demo/common/style_configurator.c"
 #endif
 #ifdef INCLUDE_NODE_EDITOR
   #include "../../demo/common/node_editor.c"
@@ -86,6 +91,11 @@ int main(void)
     HWND wnd;
     int running = 1;
     int needs_refresh = 1;
+
+    #ifdef INCLUDE_CONFIGURATOR
+    static struct nk_color color_table[NK_COLOR_COUNT];
+    memcpy(color_table, nk_default_color_style, sizeof(color_table));
+    #endif
 
     /* Win32 */
     memset(&wc, 0, sizeof(wc));
@@ -126,6 +136,8 @@ int main(void)
         while (PeekMessageW(&msg, NULL, 0, 0, PM_REMOVE)) {
             if (msg.message == WM_QUIT)
                 running = 0;
+            if (msg.message == WM_SYSKEYDOWN && msg.wParam == 'Q' && GetKeyState(VK_CONTROL) & (1 << 15))
+                running = 0;
             TranslateMessage(&msg);
             DispatchMessageW(&msg);
             needs_refresh = 1;
@@ -161,6 +173,9 @@ int main(void)
         #endif
         #ifdef INCLUDE_OVERVIEW
           overview(ctx);
+        #endif
+        #ifdef INCLUDE_CONFIGURATOR
+          style_configurator(ctx, color_table);
         #endif
         #ifdef INCLUDE_NODE_EDITOR
           node_editor(ctx);

@@ -39,7 +39,8 @@
 /*#define INCLUDE_STYLE */
 /*#define INCLUDE_CALCULATOR */
 /*#define INCLUDE_CANVAS */
-/*#define INCLUDE_OVERVIEW */
+#define INCLUDE_OVERVIEW
+/*#define INCLUDE_CONFIGURATOR */
 /*#define INCLUDE_NODE_EDITOR */
 
 #ifdef INCLUDE_ALL
@@ -47,6 +48,7 @@
   #define INCLUDE_CALCULATOR
   #define INCLUDE_CANVAS
   #define INCLUDE_OVERVIEW
+  #define INCLUDE_CONFIGURATOR
   #define INCLUDE_NODE_EDITOR
 #endif
 
@@ -61,6 +63,9 @@
 #endif
 #ifdef INCLUDE_OVERVIEW
   #include "../../demo/common/overview.c"
+#endif
+#ifdef INCLUDE_CONFIGURATOR
+  #include "../../demo/common/style_configurator.c"
 #endif
 #ifdef INCLUDE_NODE_EDITOR
   #include "../../demo/common/node_editor.c"
@@ -126,6 +131,11 @@ int main(void)
     GLXContext glContext;
     struct nk_context *ctx;
     struct nk_colorf bg;
+
+    #ifdef INCLUDE_CONFIGURATOR
+    static struct nk_color color_table[NK_COLOR_COUNT];
+    memcpy(color_table, nk_default_color_style, sizeof(color_table));
+    #endif
 
     memset(&win, 0, sizeof(win));
     win.dpy = XOpenDisplay(NULL);
@@ -194,7 +204,7 @@ int main(void)
             win.vis->visual, CWBorderPixel|CWColormap|CWEventMask, &win.swa);
         if (!win.win) die("[X11]: Failed to create window\n");
         XFree(win.vis);
-        XStoreName(win.dpy, win.win, "Demo");
+        XStoreName(win.dpy, win.win, "x11_opengl3");
         XMapWindow(win.dpy, win.win);
         win.wm_delete_window = XInternAtom(win.dpy, "WM_DELETE_WINDOW", False);
         XSetWMProtocols(win.dpy, win.win, &win.wm_delete_window, 1);
@@ -262,6 +272,11 @@ int main(void)
         while (XPending(win.dpy)) {
             XNextEvent(win.dpy, &evt);
             if (evt.type == ClientMessage) goto cleanup;
+            if (evt.type == KeyPress) {
+                int ret;
+                KeySym *code = XGetKeyboardMapping(x11.dpy, (KeyCode)evt.xkey.keycode, 1, &ret);
+                if (*code == 'q' && (evt.xkey.state & ControlMask)) goto cleanup;
+            }
             if (XFilterEvent(&evt, win.win)) continue;
             nk_x11_handle_event(&evt);
         }
@@ -310,6 +325,9 @@ int main(void)
         #endif
         #ifdef INCLUDE_OVERVIEW
           overview(ctx);
+        #endif
+        #ifdef INCLUDE_CONFIGURATOR
+          style_configurator(ctx, color_table);
         #endif
         #ifdef INCLUDE_NODE_EDITOR
           node_editor(ctx);

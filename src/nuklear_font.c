@@ -146,7 +146,7 @@ nk_font_baker_memory(nk_size *temp, int *glyph_count,
     *temp += nk_build_align + nk_baker_align;
 }
 NK_INTERN struct nk_font_baker*
-nk_font_baker(void *memory, int glyph_count, int count, struct nk_allocator *alloc)
+nk_font_baker(void *memory, int glyph_count, int count, const struct nk_allocator *alloc)
 {
     struct nk_font_baker *baker;
     if (!memory) return 0;
@@ -163,7 +163,7 @@ NK_INTERN int
 nk_font_bake_pack(struct nk_font_baker *baker,
     nk_size *image_memory, int *width, int *height, struct nk_recti *custom,
     const struct nk_font_config *config_list, int count,
-    struct nk_allocator *alloc)
+    const struct nk_allocator *alloc)
 {
     NK_STORAGE const nk_size max_height = 1024 * 32;
     const struct nk_font_config *config_iter, *it;
@@ -192,7 +192,7 @@ nk_font_bake_pack(struct nk_font_baker *baker,
         it = config_iter;
         do {
             struct stbtt_fontinfo *font_info = &baker->build[i++].info;
-            font_info->userdata = alloc;
+            font_info->userdata = (void*)alloc;
 
             if (!stbtt_InitFont(font_info, (const unsigned char*)it->ttf_blob, stbtt_GetFontOffsetForIndex((const unsigned char*)it->ttf_blob, 0)))
                 return nk_false;
@@ -200,7 +200,7 @@ nk_font_bake_pack(struct nk_font_baker *baker,
     }
     *height = 0;
     *width = (total_glyph_count > 1000) ? 1024 : 512;
-    stbtt_PackBegin(&baker->spc, 0, (int)*width, (int)max_height, 0, 1, alloc);
+    stbtt_PackBegin(&baker->spc, 0, (int)*width, (int)max_height, 0, 1, (void*)alloc);
     {
         int input_i = 0;
         int range_n = 0;
@@ -504,7 +504,7 @@ nk_font_query_font_glyph(nk_handle handle, float height,
 }
 #endif
 NK_API const struct nk_font_glyph*
-nk_font_find_glyph(struct nk_font *font, nk_rune unicode)
+nk_font_find_glyph(const struct nk_font *font, nk_rune unicode)
 {
     int i = 0;
     int count;
@@ -567,8 +567,8 @@ nk_font_init(struct nk_font *font, float pixel_height,
  *
  * ProggyClean.ttf
  * Copyright (c) 2004, 2005 Tristan Grimmer
- * MIT license (see License.txt in http://www.upperbounds.net/download/ProggyClean.ttf.zip)
- * Download and more information at http://upperbounds.net
+ * MIT license https://github.com/bluescan/proggyfonts/blob/master/LICENSE
+ * Download and more information at https://github.com/bluescan/proggyfonts
  *-----------------------------------------------------------------------------*/
 #ifdef __clang__
 #pragma clang diagnostic push
@@ -735,7 +735,7 @@ nk__lit(unsigned char *data, unsigned int length)
     NK_ASSERT (nk__dout + length <= nk__barrier);
     if (nk__dout + length > nk__barrier) { nk__dout += length; return; }
     if (data < nk__barrier2) { nk__dout = nk__barrier+1; return; }
-    NK_MEMCPY(nk__dout, data, length);
+    NK_MEMCPY(nk__dout, data, (nk_size)length);
     nk__dout += length;
 }
 NK_INTERN unsigned char*
@@ -865,7 +865,7 @@ nk_font_config(float pixel_height)
     cfg.ttf_size = 0;
     cfg.ttf_data_owned_by_atlas = 0;
     cfg.size = pixel_height;
-    cfg.oversample_h = 3;
+    cfg.oversample_h = 1;
     cfg.oversample_v = 1;
     cfg.pixel_snap = 0;
     cfg.coord_type = NK_COORD_UV;
@@ -893,7 +893,7 @@ nk_font_atlas_init_default(struct nk_font_atlas *atlas)
 }
 #endif
 NK_API void
-nk_font_atlas_init(struct nk_font_atlas *atlas, struct nk_allocator *alloc)
+nk_font_atlas_init(struct nk_font_atlas *atlas, const struct nk_allocator *alloc)
 {
     NK_ASSERT(atlas);
     NK_ASSERT(alloc);
@@ -904,7 +904,7 @@ nk_font_atlas_init(struct nk_font_atlas *atlas, struct nk_allocator *alloc)
 }
 NK_API void
 nk_font_atlas_init_custom(struct nk_font_atlas *atlas,
-    struct nk_allocator *permanent, struct nk_allocator *temporary)
+    const struct nk_allocator *permanent, const struct nk_allocator *temporary)
 {
     NK_ASSERT(atlas);
     NK_ASSERT(permanent);
@@ -1173,9 +1173,21 @@ nk_font_atlas_bake(struct nk_font_atlas *atlas, int *width, int *height,
 
 #ifdef NK_INCLUDE_DEFAULT_FONT
     /* no font added so just use default font */
-    if (!atlas->font_num)
-        atlas->default_font = nk_font_atlas_add_default(atlas, 13.0f, 0);
+    /* FIXME(sleeptightAnsiC): This "fallback" exists for compatibility
+     * with code that creates empty atlas and immediately bakes it.
+     * Several demos do this, but it doesn't make sense for API to allow it.
+     * It was never documented anywhere and it's more of a hack than feature.
+     * App/backend should call nk_font_atlas_add_default() on it's own
+     * with whatever config it wants, and treat it like any other font.
+     * Worth to consider this for removal during next major release... */
+    if (!atlas->font_num) {
+        struct nk_font_config config;
+        config = nk_font_config(0);
+        config.oversample_h = 3;
+        atlas->default_font = nk_font_atlas_add_default(atlas, 13.0f, &config);
+    }
 #endif
+
     NK_ASSERT(atlas->font_num);
     if (!atlas->font_num) return 0;
 
@@ -1370,4 +1382,3 @@ nk_font_atlas_clear(struct nk_font_atlas *atlas)
     nk_zero_struct(*atlas);
 }
 #endif
-

@@ -114,7 +114,8 @@ sleep_for(long t)
 /*#define INCLUDE_STYLE */
 /*#define INCLUDE_CALCULATOR */
 /*#define INCLUDE_CANVAS */
-/*#define INCLUDE_OVERVIEW */
+#define INCLUDE_OVERVIEW
+/*#define INCLUDE_CONFIGURATOR */
 /*#define INCLUDE_NODE_EDITOR */
 
 #ifdef INCLUDE_ALL
@@ -122,6 +123,7 @@ sleep_for(long t)
   #define INCLUDE_CALCULATOR
   #define INCLUDE_CANVAS
   #define INCLUDE_OVERVIEW
+  #define INCLUDE_CONFIGURATOR
   #define INCLUDE_NODE_EDITOR
 #endif
 
@@ -136,6 +138,9 @@ sleep_for(long t)
 #endif
 #ifdef INCLUDE_OVERVIEW
   #include "../../common/overview.c"
+#endif
+#ifdef INCLUDE_CONFIGURATOR
+  #include "../../common/style_configurator.c"
 #endif
 #ifdef INCLUDE_NODE_EDITOR
   #include "../../common/node_editor.c"
@@ -156,8 +161,13 @@ main(void)
     XWindow xw;
     struct rawfb_context *rawfb;
     void *fb = NULL;
-    rawfb_pl pl;
+    struct rawfb_pl pl;
     unsigned char tex_scratch[512 * 512];
+
+    #ifdef INCLUDE_CONFIGURATOR
+    static struct nk_color color_table[NK_COLOR_COUNT];
+    memcpy(color_table, nk_default_color_style, sizeof(color_table));
+    #endif
 
     /* X11 */
     memset(&xw, 0, sizeof xw);
@@ -178,7 +188,7 @@ main(void)
         XDefaultDepth(xw.dpy, xw.screen), InputOutput,
         xw.vis, CWEventMask | CWColormap, &xw.swa);
 
-    XStoreName(xw.dpy, xw.win, "X11");
+    XStoreName(xw.dpy, xw.win, "rawfb X11");
     XMapWindow(xw.dpy, xw.win);
     XGetWindowAttributes(xw.dpy, xw.win, &xw.attr);
     xw.width = (unsigned int)xw.attr.width;
@@ -199,6 +209,12 @@ main(void)
         started = timestamp();
         nk_input_begin(&rawfb->ctx);
         while (XCheckWindowEvent(xw.dpy, xw.win, xw.swa.event_mask, &evt)) {
+            if (evt.type == ClientMessage) goto cleanup;
+            if (evt.type == KeyPress) {
+                int ret;
+                KeySym *code = XGetKeyboardMapping(xw.dpy, (KeyCode)evt.xkey.keycode, 1, &ret);
+                if (*code == 'q' && (evt.xkey.state & ControlMask)) goto cleanup;
+            }
             if (XFilterEvent(&evt, xw.win)) continue;
             nk_xlib_handle_event(xw.dpy, xw.screen, xw.win, &evt, rawfb);
         }
@@ -234,6 +250,9 @@ main(void)
         #ifdef INCLUDE_OVERVIEW
           overview(&rawfb->ctx);
         #endif
+        #ifdef INCLUDE_CONFIGURATOR
+          style_configurator(&rawfb->ctx, color_table);
+        #endif
         #ifdef INCLUDE_NODE_EDITOR
           node_editor(&rawfb->ctx);
         #endif
@@ -253,6 +272,7 @@ main(void)
             sleep_for(DTIME - dt);
     }
 
+cleanup:
     nk_rawfb_shutdown(rawfb);
     nk_xlib_shutdown();
     XUnmapWindow(xw.dpy, xw.win);

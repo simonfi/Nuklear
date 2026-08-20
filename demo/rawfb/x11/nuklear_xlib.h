@@ -35,7 +35,7 @@
 
 #include <X11/Xlib.h>
 
-NK_API int  nk_xlib_init(Display *dpy, Visual *vis, int screen, Window root, unsigned int w, unsigned int h, void **fb, rawfb_pl *pl);
+NK_API int  nk_xlib_init(Display *dpy, Visual *vis, int screen, Window root, unsigned int w, unsigned int h, void **fb, struct rawfb_pl *pl);
 NK_API int  nk_xlib_handle_event(Display *dpy, int screen, Window win, XEvent *evt, struct rawfb_context *rawfb);
 NK_API void nk_xlib_render(Drawable screen);
 NK_API void nk_xlib_shutdown(void);
@@ -74,7 +74,7 @@ static struct  {
 
 NK_API int
 nk_xlib_init(Display *dpy, Visual *vis, int screen, Window root,
-    unsigned int w, unsigned int h, void **fb, rawfb_pl *pl)
+    unsigned int w, unsigned int h, void **fb, struct rawfb_pl *pl)
 {
     unsigned int depth = XDefaultDepth(dpy, screen);
     xlib.dpy = dpy;
@@ -138,22 +138,15 @@ nk_xlib_init(Display *dpy, Visual *vis, int screen, Window root,
     xlib.gc = XDefaultGC(dpy, screen);
     *fb = xlib.ximg->data;
 
-    if (xlib.ximg->red_mask == 0xff0000 &&
-	xlib.ximg->green_mask == 0xff00 &&
-	xlib.ximg->blue_mask == 0xff &&
-	xlib.ximg->bits_per_pixel == 32) {
-	*pl = PIXEL_LAYOUT_XRGB_8888;
-    }
-    else if (xlib.ximg->red_mask == 0xff000000 &&
-	     xlib.ximg->green_mask == 0xff0000 &&
-	     xlib.ximg->blue_mask == 0xff00 &&
-	     xlib.ximg->bits_per_pixel == 32) {
-	*pl = PIXEL_LAYOUT_RGBX_8888;
-    }
-    else {
-	perror("nk_xlib_init(): Unrecognized pixel layout.\n");
-	return 0;
-    }
+    pl->bytesPerPixel = xlib.ximg->bits_per_pixel / 8;
+    pl->rshift = __builtin_ctzl(xlib.ximg->red_mask);
+    pl->gshift = __builtin_ctzl(xlib.ximg->green_mask);
+    pl->bshift = __builtin_ctzl(xlib.ximg->blue_mask);
+    pl->ashift = 0;
+    pl->rloss = 8 - __builtin_popcount(xlib.ximg->red_mask);
+    pl->gloss = 8 - __builtin_popcount(xlib.ximg->green_mask);
+    pl->bloss = 8 - __builtin_popcount(xlib.ximg->blue_mask);
+    pl->aloss = 8;
 
     return 1;
 }
@@ -188,8 +181,21 @@ nk_xlib_handle_event(Display *dpy, int screen, Window win, XEvent *evt, struct r
         else if (*code == XK_Down)      nk_input_key(&rawfb->ctx, NK_KEY_DOWN, down);
         else if (*code == XK_BackSpace) nk_input_key(&rawfb->ctx, NK_KEY_BACKSPACE, down);
         else if (*code == XK_Escape)    nk_input_key(&rawfb->ctx, NK_KEY_TEXT_RESET_MODE, down);
+        else if (*code == XK_Alt_L || *code == XK_Alt_R) nk_input_key(&rawfb->ctx, NK_KEY_ALT, down);
         else if (*code == XK_Page_Up)   nk_input_key(&rawfb->ctx, NK_KEY_SCROLL_UP, down);
         else if (*code == XK_Page_Down) nk_input_key(&rawfb->ctx, NK_KEY_SCROLL_DOWN, down);
+        else if (*code == XK_F1)        nk_input_key(&rawfb->ctx, NK_KEY_F1, down);
+        else if (*code == XK_F2)        nk_input_key(&rawfb->ctx, NK_KEY_F2, down);
+        else if (*code == XK_F3)        nk_input_key(&rawfb->ctx, NK_KEY_F3, down);
+        else if (*code == XK_F4)        nk_input_key(&rawfb->ctx, NK_KEY_F4, down);
+        else if (*code == XK_F5)        nk_input_key(&rawfb->ctx, NK_KEY_F5, down);
+        else if (*code == XK_F6)        nk_input_key(&rawfb->ctx, NK_KEY_F6, down);
+        else if (*code == XK_F7)        nk_input_key(&rawfb->ctx, NK_KEY_F7, down);
+        else if (*code == XK_F8)        nk_input_key(&rawfb->ctx, NK_KEY_F8, down);
+        else if (*code == XK_F9)        nk_input_key(&rawfb->ctx, NK_KEY_F9, down);
+        else if (*code == XK_F10)       nk_input_key(&rawfb->ctx, NK_KEY_F10, down);
+        else if (*code == XK_F11)       nk_input_key(&rawfb->ctx, NK_KEY_F11, down);
+        else if (*code == XK_F12)       nk_input_key(&rawfb->ctx, NK_KEY_F12, down);
         else if (*code == XK_Home) {
             nk_input_key(&rawfb->ctx, NK_KEY_TEXT_START, down);
             nk_input_key(&rawfb->ctx, NK_KEY_SCROLL_START, down);
@@ -243,6 +249,10 @@ nk_xlib_handle_event(Display *dpy, int screen, Window win, XEvent *evt, struct r
             nk_input_scroll(&rawfb->ctx, nk_vec2(0, 1.0f));
         else if (evt->xbutton.button == Button5)
             nk_input_scroll(&rawfb->ctx, nk_vec2(0, -1.0f));
+        else if (evt->xbutton.button == 8)
+            nk_input_button(&rawfb->ctx, NK_BUTTON_X1, x, y, down);
+        else if (evt->xbutton.button == 9)
+            nk_input_button(&rawfb->ctx, NK_BUTTON_X2, x, y, down);
         else return 0;
         return 1;
     } else if (evt->type == MotionNotify) {
@@ -257,7 +267,7 @@ nk_xlib_handle_event(Display *dpy, int screen, Window win, XEvent *evt, struct r
     } else if (evt->type == Expose || evt->type == ConfigureNotify) {
         /* Window resize handler */
         void *fb;
-        rawfb_pl pl;
+        struct rawfb_pl pl;
         unsigned int width, height;
         XWindowAttributes attr;
         XGetWindowAttributes(dpy, win, &attr);

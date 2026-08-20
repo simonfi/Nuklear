@@ -46,10 +46,10 @@ NK_API void                 nk_x11_shutdown(void);
 #include <GL/gl.h>
 
 #ifndef NK_X11_DOUBLE_CLICK_LO
-#define NK_X11_DOUBLE_CLICK_LO 20
+#define NK_X11_DOUBLE_CLICK_LO 0.02
 #endif
 #ifndef NK_X11_DOUBLE_CLICK_HI
-#define NK_X11_DOUBLE_CLICK_HI 200
+#define NK_X11_DOUBLE_CLICK_HI 0.20
 #endif
 
 struct nk_x11_vertex {
@@ -71,15 +71,16 @@ static struct nk_x11 {
     Cursor cursor;
     Display *dpy;
     Window win;
-    long last_button_click;
+    double last_button_click;
+    double time_of_last_frame;
 } x11;
 
-NK_INTERN long
-nk_timestamp(void)
+NK_INTERN double
+nk_get_time(void)
 {
     struct timeval tv;
     if (gettimeofday(&tv, NULL) < 0) return 0;
-    return (long)((long)tv.tv_sec * 1000 + (long)tv.tv_usec/1000);
+    return ((double)tv.tv_sec + (double)tv.tv_usec/1000000);
 }
 
 NK_INTERN void
@@ -101,6 +102,10 @@ nk_x11_render(enum nk_anti_aliasing AA, int max_vertex_buffer, int max_element_b
     struct nk_x11_device *dev = &x11.ogl;
     int width, height;
     XWindowAttributes attr;
+
+    double now = nk_get_time();
+    x11.ctx.delta_time_seconds = now - x11.time_of_last_frame;
+    x11.time_of_last_frame = now;
 
     NK_UNUSED(max_vertex_buffer);
     NK_UNUSED(max_element_buffer);
@@ -161,7 +166,7 @@ nk_x11_render(enum nk_anti_aliasing AA, int max_vertex_buffer, int max_element_b
         config.shape_AA = AA;
         config.line_AA = AA;
 
-        /* convert shapes into vertexes */
+        /* convert shapes into vertices */
         nk_buffer_init_default(&vbuf);
         nk_buffer_init_default(&ebuf);
         nk_convert(&x11.ctx, &dev->cmds, &vbuf, &ebuf, &config);
@@ -235,6 +240,7 @@ NK_API int
 nk_x11_handle_event(XEvent *evt)
 {
     struct nk_context *ctx = &x11.ctx;
+    static int insert_toggle = 0;
 
     /* optional grabbing behavior */
     if (ctx->input.mouse.grab) {
@@ -255,16 +261,29 @@ nk_x11_handle_event(XEvent *evt)
         if (*code == XK_Shift_L || *code == XK_Shift_R) nk_input_key(ctx, NK_KEY_SHIFT, down);
         else if (*code == XK_Control_L || *code == XK_Control_R) nk_input_key(ctx, NK_KEY_CTRL, down);
         else if (*code == XK_Delete)    nk_input_key(ctx, NK_KEY_DEL, down);
-        else if (*code == XK_Return)    nk_input_key(ctx, NK_KEY_ENTER, down);
+        else if (*code == XK_Return || *code == XK_KP_Enter)    nk_input_key(ctx, NK_KEY_ENTER, down);
         else if (*code == XK_Tab)       nk_input_key(ctx, NK_KEY_TAB, down);
         else if (*code == XK_Left)      nk_input_key(ctx, NK_KEY_LEFT, down);
         else if (*code == XK_Right)     nk_input_key(ctx, NK_KEY_RIGHT, down);
         else if (*code == XK_Up)      nk_input_key(ctx, NK_KEY_UP, down);
         else if (*code == XK_Down)     nk_input_key(ctx, NK_KEY_DOWN, down);
         else if (*code == XK_BackSpace) nk_input_key(ctx, NK_KEY_BACKSPACE, down);
-        else if (*code == XK_space && !down) nk_input_char(ctx, ' ');
+        else if (*code == XK_Escape)    nk_input_key(ctx, NK_KEY_TEXT_RESET_MODE, down);
+        else if (*code == XK_Alt_L || *code == XK_Alt_R) nk_input_key(ctx, NK_KEY_ALT, down);
         else if (*code == XK_Page_Up)   nk_input_key(ctx, NK_KEY_SCROLL_UP, down);
         else if (*code == XK_Page_Down) nk_input_key(ctx, NK_KEY_SCROLL_DOWN, down);
+        else if (*code == XK_F1)        nk_input_key(ctx, NK_KEY_F1, down);
+        else if (*code == XK_F2)        nk_input_key(ctx, NK_KEY_F2, down);
+        else if (*code == XK_F3)        nk_input_key(ctx, NK_KEY_F3, down);
+        else if (*code == XK_F4)        nk_input_key(ctx, NK_KEY_F4, down);
+        else if (*code == XK_F5)        nk_input_key(ctx, NK_KEY_F5, down);
+        else if (*code == XK_F6)        nk_input_key(ctx, NK_KEY_F6, down);
+        else if (*code == XK_F7)        nk_input_key(ctx, NK_KEY_F7, down);
+        else if (*code == XK_F8)        nk_input_key(ctx, NK_KEY_F8, down);
+        else if (*code == XK_F9)        nk_input_key(ctx, NK_KEY_F9, down);
+        else if (*code == XK_F10)       nk_input_key(ctx, NK_KEY_F10, down);
+        else if (*code == XK_F11)       nk_input_key(ctx, NK_KEY_F11, down);
+        else if (*code == XK_F12)       nk_input_key(ctx, NK_KEY_F12, down);
         else if (*code == XK_Home) {
             nk_input_key(ctx, NK_KEY_TEXT_START, down);
             nk_input_key(ctx, NK_KEY_SCROLL_START, down);
@@ -290,11 +309,14 @@ nk_x11_handle_event(XEvent *evt)
                 nk_input_key(ctx, NK_KEY_TEXT_LINE_START, down);
             else if (*code == 'e' && (evt->xkey.state & ControlMask))
                 nk_input_key(ctx, NK_KEY_TEXT_LINE_END, down);
-            else {
-                if (*code == 'i')
+            else if (*code == XK_Insert) {
+                if (down) insert_toggle = !insert_toggle;
+                if (insert_toggle) {
                     nk_input_key(ctx, NK_KEY_TEXT_INSERT_MODE, down);
-                else if (*code == 'r')
+                } else {
                     nk_input_key(ctx, NK_KEY_TEXT_REPLACE_MODE, down);
+                }
+            } else {
                 if (down) {
                     char buf[32];
                     KeySym keysym = 0;
@@ -311,10 +333,10 @@ nk_x11_handle_event(XEvent *evt)
         const int x = evt->xbutton.x, y = evt->xbutton.y;
         if (evt->xbutton.button == Button1) {
             if (down) { /* Double-Click Button handler */
-                long dt = nk_timestamp() - x11.last_button_click;
+                float dt = nk_get_time() - x11.last_button_click;
                 if (dt > NK_X11_DOUBLE_CLICK_LO && dt < NK_X11_DOUBLE_CLICK_HI)
                     nk_input_button(ctx, NK_BUTTON_DOUBLE, x, y, nk_true);
-                x11.last_button_click = nk_timestamp();
+                x11.last_button_click = nk_get_time();
             } else nk_input_button(ctx, NK_BUTTON_DOUBLE, x, y, nk_false);
             nk_input_button(ctx, NK_BUTTON_LEFT, x, y, down);
         } else if (evt->xbutton.button == Button2)
@@ -325,6 +347,10 @@ nk_x11_handle_event(XEvent *evt)
             nk_input_scroll(ctx, nk_vec2(0,1.0f));
         else if (evt->xbutton.button == Button5)
             nk_input_scroll(ctx, nk_vec2(0,-1.0f));
+        else if (evt->xbutton.button == 8)
+            nk_input_button(ctx, NK_BUTTON_X1, x, y, down);
+        else if (evt->xbutton.button == 9)
+            nk_input_button(ctx, NK_BUTTON_X2, x, y, down);
         else return 0;
         return 1;
     } else if (evt->type == MotionNotify) {
@@ -363,6 +389,7 @@ nk_x11_init(Display *dpy, Window win)
 
     nk_buffer_init_default(&x11.ogl.cmds);
     nk_init_default(&x11.ctx, 0);
+    x11.time_of_last_frame = nk_get_time();
     return &x11.ctx;
 }
 

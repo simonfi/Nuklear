@@ -1,13 +1,16 @@
+#include <limits.h> /* INT_MAX */
+#include <time.h> /* struct tm, localtime */
+
 static int
 overview(struct nk_context *ctx)
 {
     /* window flags */
     static nk_bool show_menu = nk_true;
-    static nk_flags window_flags = NK_WINDOW_TITLE|NK_WINDOW_BORDER|NK_WINDOW_SCALABLE|NK_WINDOW_MOVABLE|NK_WINDOW_MINIMIZABLE;
+    static nk_flags window_flags = NK_WINDOW_TITLE|NK_WINDOW_BORDER|NK_WINDOW_SCALABLE|NK_WINDOW_MOVABLE|NK_WINDOW_MINIMIZABLE|NK_WINDOW_SCROLL_AUTO_HIDE;
     nk_flags actual_window_flags = 0;
 
     /* widget flags */
-	static nk_bool disable_widgets = nk_false;
+    static nk_bool disable_widgets = nk_false;
 
     /* popups */
     static enum nk_style_header_align header_align = NK_HEADER_RIGHT;
@@ -15,7 +18,8 @@ overview(struct nk_context *ctx)
 
 #ifdef INCLUDE_STYLE
     /* styles */
-    static const char* themes[] = {"Black", "White", "Red", "Blue", "Dark", "Dracula"};
+    static const char* themes[] = {"Black", "White", "Red", "Blue", "Dark", "Dracula",
+      "Catppucin Latte", "Catppucin Frappe", "Catppucin Macchiato", "Catppucin Mocha"};
     static int current_theme = 0;
 #endif
 
@@ -153,7 +157,7 @@ overview(struct nk_context *ctx)
             nk_checkbox_flags_label(ctx, "No Scrollbar", &window_flags, NK_WINDOW_NO_SCROLLBAR);
             nk_checkbox_flags_label(ctx, "Minimizable", &window_flags, NK_WINDOW_MINIMIZABLE);
             nk_checkbox_flags_label(ctx, "Scale Left", &window_flags, NK_WINDOW_SCALE_LEFT);
-			nk_checkbox_label(ctx, "Disable widgets", &disable_widgets);
+            nk_checkbox_label(ctx, "Disable widgets", &disable_widgets);
             nk_tree_pop(ctx);
         }
 
@@ -201,13 +205,26 @@ overview(struct nk_context *ctx)
 
                 nk_layout_row_static(ctx, 25, 25, 8);
                 nk_button_symbol(ctx, NK_SYMBOL_CIRCLE_SOLID);
-                nk_button_symbol(ctx, NK_SYMBOL_CIRCLE_OUTLINE);
                 nk_button_symbol(ctx, NK_SYMBOL_RECT_SOLID);
+                nk_button_symbol(ctx, NK_SYMBOL_CIRCLE_OUTLINE);
                 nk_button_symbol(ctx, NK_SYMBOL_RECT_OUTLINE);
                 nk_button_symbol(ctx, NK_SYMBOL_TRIANGLE_UP);
+                nk_button_symbol(ctx, NK_SYMBOL_TRIANGLE_RIGHT);
                 nk_button_symbol(ctx, NK_SYMBOL_TRIANGLE_DOWN);
                 nk_button_symbol(ctx, NK_SYMBOL_TRIANGLE_LEFT);
-                nk_button_symbol(ctx, NK_SYMBOL_TRIANGLE_RIGHT);
+                nk_button_symbol(ctx, NK_SYMBOL_TRIANGLE_UP_OUTLINE);
+                nk_button_symbol(ctx, NK_SYMBOL_TRIANGLE_RIGHT_OUTLINE);
+                nk_button_symbol(ctx, NK_SYMBOL_TRIANGLE_DOWN_OUTLINE);
+                nk_button_symbol(ctx, NK_SYMBOL_TRIANGLE_LEFT_OUTLINE);
+                nk_button_symbol(ctx, NK_SYMBOL_CHEVRON_UP);
+                nk_button_symbol(ctx, NK_SYMBOL_CHEVRON_RIGHT);
+                nk_button_symbol(ctx, NK_SYMBOL_CHEVRON_DOWN);
+                nk_button_symbol(ctx, NK_SYMBOL_CHEVRON_LEFT);
+                nk_button_symbol(ctx, NK_SYMBOL_HAMBURGER);
+                nk_button_symbol(ctx, NK_SYMBOL_X);
+                nk_button_symbol(ctx, NK_SYMBOL_UNDERSCORE);
+                nk_button_symbol(ctx, NK_SYMBOL_PLUS);
+                nk_button_symbol(ctx, NK_SYMBOL_MINUS);
 
                 nk_layout_row_static(ctx, 30, 100, 2);
                 nk_button_symbol_label(ctx, NK_SYMBOL_TRIANGLE_LEFT, "prev", NK_TEXT_RIGHT);
@@ -221,6 +238,8 @@ overview(struct nk_context *ctx)
                 /* Basic widgets */
                 static int int_slider = 5;
                 static float float_slider = 2.5f;
+                static int int_knob = 5;
+                static float float_knob = 2.5f;
                 static nk_size prog_value = 40;
                 static float property_float = 2;
                 static int property_int = 10;
@@ -259,6 +278,12 @@ overview(struct nk_context *ctx)
                 nk_slider_float(ctx, 0, &float_slider, 5.0, 0.5f);
                 nk_labelf(ctx, NK_TEXT_LEFT, "Progressbar: %u" , (int)prog_value);
                 nk_progress(ctx, &prog_value, 100, NK_MODIFIABLE);
+
+                nk_layout_row(ctx, NK_STATIC, 40, 2, ratio);
+                nk_labelf(ctx, NK_TEXT_LEFT, "Knob int: %d", int_knob);
+                nk_knob_int(ctx, 0, &int_knob, 10, 1, NK_DOWN, 60.0f);
+                nk_labelf(ctx, NK_TEXT_LEFT, "Knob float: %.2f", float_knob);
+                nk_knob_float(ctx, 0, &float_knob, 5.0, 0.5f, NK_DOWN, 60.0f);
 
                 nk_layout_row(ctx, NK_STATIC, 25, 2, ratio);
                 nk_label(ctx, "Property float:", NK_TEXT_LEFT);
@@ -576,10 +601,12 @@ overview(struct nk_context *ctx)
             {
                 static const float ratio[] = {120, 150};
                 static char field_buffer[64];
+                static char field_w_overwrite_buf[64];
                 static char text[9][64];
                 static int text_len[9];
                 static char box_buffer[512];
                 static int field_len;
+                static int field_ow_len;
                 static int box_len;
                 nk_flags active;
 
@@ -612,6 +639,9 @@ overview(struct nk_context *ctx)
                 nk_label(ctx, "Field:", NK_TEXT_LEFT);
                 nk_edit_string(ctx, NK_EDIT_FIELD, field_buffer, &field_len, 64, nk_filter_default);
 
+                nk_label(ctx, "Field 2:", NK_TEXT_LEFT);
+                nk_edit_string(ctx, NK_EDIT_SELECTABLE|NK_EDIT_CLIPBOARD, field_w_overwrite_buf, &field_ow_len, 64, nk_filter_default);
+
                 nk_label(ctx, "Box:", NK_TEXT_LEFT);
                 nk_layout_row_static(ctx, 180, 278, 1);
                 nk_edit_string(ctx, NK_EDIT_BOX, box_buffer, &box_len, 512, nk_filter_default);
@@ -619,7 +649,7 @@ overview(struct nk_context *ctx)
                 nk_layout_row(ctx, NK_STATIC, 25, 2, ratio);
                 active = nk_edit_string(ctx, NK_EDIT_FIELD|NK_EDIT_SIG_ENTER, text[7], &text_len[7], 64,  nk_filter_ascii);
                 if (nk_button_label(ctx, "Submit") ||
-                    (active & NK_EDIT_COMMITED))
+                    (active & NK_EDIT_COMMITTED))
                 {
                     text[7][text_len[7]] = '\n';
                     text_len[7]++;
@@ -749,6 +779,10 @@ overview(struct nk_context *ctx)
             const struct nk_input *in = &ctx->input;
             struct nk_rect bounds;
 
+            /* seconds */
+            static float delay_timer = 0.0;
+            static nk_bool clicked = nk_false;
+
             /* menu contextual */
             nk_layout_row_static(ctx, 30, 160, 1);
             bounds = nk_widget_bounds(ctx);
@@ -818,12 +852,102 @@ overview(struct nk_context *ctx)
                 } else popup_active = nk_false;
             }
 
-            /* tooltip */
-            nk_layout_row_static(ctx, 30, 150, 1);
+            /* tooltips */
+            nk_layout_row_static(ctx, 30, 400, 1);
             bounds = nk_widget_bounds(ctx);
-            nk_label(ctx, "Hover me for tooltip", NK_TEXT_LEFT);
-            if (nk_input_is_mouse_hovering_rect(in, bounds))
-                nk_tooltip(ctx, "This is a tooltip");
+            nk_label(ctx, "Hover for default tooltip", NK_TEXT_LEFT);
+            if (nk_input_is_mouse_hovering_rect(in, bounds)) {
+                nk_tooltip(ctx, "This is a default tooltip");
+            }
+
+            bounds = nk_widget_bounds(ctx);
+            nk_label(ctx, "Hover motionless for a default delayed tooltip", NK_TEXT_LEFT);
+            nk_do_tooltip_delay(ctx, "This is a delayed tooltip", bounds, &delay_timer);
+
+            bounds = nk_widget_bounds(ctx);
+            nk_label(ctx, "Hover motionless longer a custom delayed tooltip", NK_TEXT_LEFT);
+            if (nk_input_is_mouse_hovering_still_delay_rect(ctx, bounds, &delay_timer, 1.5)) {
+                nk_tooltip(ctx, "This is a custom delayed tooltip");
+            }
+
+            bounds = nk_widget_bounds(ctx);
+            if (nk_button_label(ctx, "Delayed tooltip with click sensitivity")) {
+                clicked = nk_true;
+            }
+            nk_do_tooltip_delay_clicked(ctx, "disappears when clicked, timer starts when you move again", bounds, &delay_timer, &clicked);
+
+
+            bounds = nk_widget_bounds(ctx);
+            nk_label(ctx, "Hover for Gnome-like tooltip", NK_TEXT_LEFT);
+            if (nk_input_is_mouse_hovering_rect(in, bounds)) {
+                struct nk_vec2 offset = { 0, -15 };
+                nk_tooltip_offset(ctx, "Gnome bottom centers plus a -y offset", NK_BOTTOM_CENTER, offset);
+            }
+            bounds = nk_widget_bounds(ctx);
+            nk_label(ctx, "Hover for a bottom left tooltip", NK_TEXT_LEFT);
+            if (nk_input_is_mouse_hovering_rect(in, bounds)) {
+                struct nk_vec2 offset = { 0, 0 };
+                nk_tooltip_offset(ctx, "Bottom left positioning", NK_BOTTOM_LEFT, offset);
+            }
+            bounds = nk_widget_bounds(ctx);
+            nk_label(ctx, "Hover for MAGIC!", NK_TEXT_LEFT);
+            if (nk_input_is_mouse_hovering_rect(in, bounds)) {
+                static double accum_time_seconds = 0.0;
+                const double speed = 3.0, radius = 50.0;
+                struct nk_vec2 offset;
+                offset.x = radius * cos(accum_time_seconds * speed);
+                offset.y = radius * sin(accum_time_seconds * speed);
+                nk_tooltip_offset(ctx, "WOW!", NK_MIDDLE_CENTER, offset);
+                accum_time_seconds += (double)(ctx->delta_time_seconds);
+            }
+
+            /* editor for custom tooltip */
+            {
+                static char text_buf[64] = {0};
+                static int text_initialized = 0;
+                static struct nk_vec2 offset = {0};
+                static const char* tooltip_positions[] =
+                {
+                    "TOP_LEFT",
+                    "TOP_CENTER",
+                    "TOP_RIGHT",
+
+                    "MIDDLE_LEFT",
+                    "MIDDLE_CENTER",
+                    "MIDDLE_RIGHT",
+
+                    "BOTTOM_LEFT",
+                    "BOTTOM_CENTER",
+                    "BOTTOM_RIGHT"
+                };
+                static int cur_pos = NK_TOP_LEFT;
+
+                if (!text_initialized) {
+                    const char text_default[] = "you can customize this!";
+                    NK_ASSERT(sizeof(text_default) < sizeof(text_buf));
+                    memcpy(text_buf, text_default, sizeof(text_default));
+                    text_initialized = 1;
+                }
+                bounds = nk_widget_bounds(ctx);
+                nk_label(ctx, "Hover for custom tooltip (you can customize it below)", NK_TEXT_LEFT);
+                if (nk_input_is_mouse_hovering_rect(in, bounds)) {
+                    nk_tooltip_offset(ctx, text_buf, (enum nk_tooltip_pos)cur_pos, offset);
+                }
+                nk_layout_row_dynamic(ctx, 1, 1);
+                nk_rule_horizontal(ctx, nk_white, nk_true);
+                nk_layout_row_dynamic(ctx, 30, 2);
+                nk_label(ctx, "custom tooltip text:", NK_TEXT_LEFT);
+                nk_edit_string_zero_terminated(ctx, NK_EDIT_SIMPLE, text_buf, sizeof(text_buf), nk_filter_default);
+                nk_layout_row_dynamic(ctx, 30, 1);
+                cur_pos = nk_combo(ctx, tooltip_positions, NK_LEN(tooltip_positions), cur_pos, 25, nk_vec2(200, 200));
+
+
+                nk_layout_row_dynamic(ctx, 30, 2);
+                nk_label(ctx, "custom tooltip offset", NK_TEXT_LEFT);
+                nk_property_float(ctx, "#x", -100.0f, &offset.x, 100.0f, 5.0f, 0.5f);
+                nk_label(ctx, "custom tooltip offset", NK_TEXT_LEFT);
+                nk_property_float(ctx, "#y", -100.0f, &offset.y, 100.0f, 5.0f, 0.5f);
+            }
 
             nk_tree_pop(ctx);
         }
@@ -1333,6 +1457,41 @@ overview(struct nk_context *ctx)
             }
             nk_tree_pop(ctx);
         }
+
+        /* Input */
+        if (nk_tree_push(ctx, NK_TREE_TAB, "Input", NK_MINIMIZED))
+        {
+            const struct nk_input *in = &ctx->input;
+            static const char *button_names[NK_BUTTON_MAX] = {
+                "Left", "Middle", "Right", "Double Click", "X1", "X2"
+            };
+            int i;
+
+            /* Mouse Buttons*/
+            nk_layout_row_dynamic(ctx, 30, 1);
+            nk_label(ctx, "Mouse Buttons", NK_TEXT_LEFT);
+            nk_layout_row_dynamic(ctx, 20, 2);
+            for (i = 0; i < NK_BUTTON_MAX; i++) {
+                nk_label(ctx, button_names[i], NK_TEXT_LEFT);
+                if (nk_input_is_mouse_pressed(in, (enum nk_buttons)i))
+                    nk_label(ctx, "Pressed", NK_TEXT_LEFT);
+                else if (nk_input_is_mouse_down(in, (enum nk_buttons)i))
+                    nk_label(ctx, "Down", NK_TEXT_LEFT);
+                else if (nk_input_is_mouse_released(in, (enum nk_buttons)i))
+                    nk_label(ctx, "Released", NK_TEXT_LEFT);
+                else
+                    nk_label(ctx, "Up", NK_TEXT_LEFT);
+            }
+
+            /* Mouse Wheel */
+            nk_layout_row_dynamic(ctx, 30, 1);
+            nk_label(ctx, "Mouse Wheel", NK_TEXT_LEFT);
+            nk_layout_row_dynamic(ctx, 20, 2);
+            nk_labelf(ctx, NK_TEXT_LEFT, "X: %.2f", in->mouse.scroll_delta.x);
+            nk_labelf(ctx, NK_TEXT_LEFT, "Y: %.2f", in->mouse.scroll_delta.y);
+            nk_tree_pop(ctx);
+        }
+
         if (disable_widgets)
      		nk_widget_disable_end(ctx);
     }

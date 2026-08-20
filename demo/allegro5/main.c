@@ -41,7 +41,8 @@
 /*#define INCLUDE_STYLE */
 /*#define INCLUDE_CALCULATOR */
 /*#define INCLUDE_CANVAS */
-/*#define INCLUDE_OVERVIEW */
+#define INCLUDE_OVERVIEW
+/*#define INCLUDE_CONFIGURATOR */
 /*#define INCLUDE_NODE_EDITOR */
 
 #ifdef INCLUDE_ALL
@@ -49,6 +50,7 @@
   #define INCLUDE_CALCULATOR
   #define INCLUDE_CANVAS
   #define INCLUDE_OVERVIEW
+  #define INCLUDE_CONFIGURATOR
   #define INCLUDE_NODE_EDITOR
 #endif
 
@@ -63,6 +65,9 @@
 #endif
 #ifdef INCLUDE_OVERVIEW
   #include "../../demo/common/overview.c"
+#endif
+#ifdef INCLUDE_CONFIGURATOR
+  #include "../../demo/common/style_configurator.c"
 #endif
 #ifdef INCLUDE_NODE_EDITOR
   #include "../../demo/common/node_editor.c"
@@ -81,6 +86,11 @@ int main(void)
     NkAllegro5Font *font;
     struct nk_context *ctx;
 
+    #ifdef INCLUDE_CONFIGURATOR
+    static struct nk_color color_table[NK_COLOR_COUNT];
+    memcpy(color_table, nk_default_color_style, sizeof(color_table));
+    #endif
+
     if (!al_init()) {
         fprintf(stdout, "failed to initialize allegro5!\n");
         exit(1);
@@ -90,6 +100,7 @@ int main(void)
     al_set_mouse_wheel_precision(150);
     al_install_keyboard();
 
+    al_set_new_window_title("allegro5");
     al_set_new_display_flags(ALLEGRO_WINDOWED|ALLEGRO_RESIZABLE|ALLEGRO_OPENGL);
     al_set_new_display_option(ALLEGRO_SAMPLE_BUFFERS, 1, ALLEGRO_SUGGEST);
     al_set_new_display_option(ALLEGRO_SAMPLES, 8, ALLEGRO_SUGGEST);
@@ -110,7 +121,7 @@ int main(void)
     al_register_event_source(event_queue, al_get_mouse_event_source());
     al_register_event_source(event_queue, al_get_keyboard_event_source());
 
-    font = nk_allegro5_font_create_from_file("../../../extra_font/Roboto-Regular.ttf", 12, 0);
+    font = nk_allegro5_font_create_from_file("../../extra_font/Roboto-Regular.ttf", 12, 0);
 
     ctx = nk_allegro5_init(font, display, WINDOW_WIDTH, WINDOW_HEIGHT);
 
@@ -123,8 +134,11 @@ int main(void)
 
         get_event = al_wait_for_event_until(event_queue, &ev, &timeout);
 
-        if (get_event && ev.type == ALLEGRO_EVENT_DISPLAY_CLOSE) {
-            break;
+        if (get_event) {
+            if (ev.type == ALLEGRO_EVENT_DISPLAY_CLOSE ||
+                (ev.keyboard.keycode == ALLEGRO_KEY_Q && ev.keyboard.modifiers & ALLEGRO_KEYMOD_CTRL)) {
+                break;
+            }
         }
 
         /* Very Important: Always do nk_input_begin / nk_input_end even if
@@ -167,6 +181,9 @@ int main(void)
         #endif
         #ifdef INCLUDE_OVERVIEW
           overview(ctx);
+        #endif
+        #ifdef INCLUDE_CONFIGURATOR
+          style_configurator(ctx, color_table);
         #endif
         #ifdef INCLUDE_NODE_EDITOR
           node_editor(ctx);

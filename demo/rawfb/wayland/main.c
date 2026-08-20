@@ -62,7 +62,8 @@ struct nk_wayland {
 /*#define INCLUDE_STYLE */
 /*#define INCLUDE_CALCULATOR */
 /*#define INCLUDE_CANVAS */
-/*#define INCLUDE_OVERVIEW */
+#define INCLUDE_OVERVIEW
+/*#define INCLUDE_CONFIGURATOR */
 /*#define INCLUDE_NODE_EDITOR */
 
 #ifdef INCLUDE_ALL
@@ -70,6 +71,7 @@ struct nk_wayland {
   #define INCLUDE_CALCULATOR
   #define INCLUDE_CANVAS
   #define INCLUDE_OVERVIEW
+  #define INCLUDE_CONFIGURATOR
   #define INCLUDE_NODE_EDITOR
 #endif
 
@@ -84,6 +86,9 @@ struct nk_wayland {
 #endif
 #ifdef INCLUDE_OVERVIEW
   #include "../../common/overview.c"
+#endif
+#ifdef INCLUDE_CONFIGURATOR
+  #include "../../common/style_configurator.c"
 #endif
 #ifdef INCLUDE_NODE_EDITOR
   #include "../../common/node_editor.c"
@@ -175,14 +180,42 @@ static void nk_wayland_pointer_button (void *data, struct wl_pointer *pointer, u
     NK_UNUSED(serial);
     NK_UNUSED(time);
 
-    if (button == 272){ //left mouse button
+    switch (button) {
+    case 272: // Left Mouse Button
         if (state == WL_POINTER_BUTTON_STATE_PRESSED) {
-           // printf("nk_input_button x=%d, y=%d press: 1 \n", win->mouse_pointer_x, win->mouse_pointer_y);
             nk_input_button(&(win->rawfb->ctx), NK_BUTTON_LEFT, win->mouse_pointer_x, win->mouse_pointer_y, 1);
-
         } else if (state == WL_POINTER_BUTTON_STATE_RELEASED) {
             nk_input_button(&(win->rawfb->ctx), NK_BUTTON_LEFT, win->mouse_pointer_x, win->mouse_pointer_y, 0);
         }
+        break;
+    case 273: // Right Mouse Button
+        if (state == WL_POINTER_BUTTON_STATE_PRESSED) {
+            nk_input_button(&(win->rawfb->ctx), NK_BUTTON_RIGHT, win->mouse_pointer_x, win->mouse_pointer_y, 1);
+        } else if (state == WL_POINTER_BUTTON_STATE_RELEASED) {
+            nk_input_button(&(win->rawfb->ctx), NK_BUTTON_RIGHT, win->mouse_pointer_x, win->mouse_pointer_y, 0);
+        }
+        break;
+    case 274: // Middle Mouse Button
+        if (state == WL_POINTER_BUTTON_STATE_PRESSED) {
+            nk_input_button(&(win->rawfb->ctx), NK_BUTTON_MIDDLE, win->mouse_pointer_x, win->mouse_pointer_y, 1);
+        } else if (state == WL_POINTER_BUTTON_STATE_RELEASED) {
+            nk_input_button(&(win->rawfb->ctx), NK_BUTTON_MIDDLE, win->mouse_pointer_x, win->mouse_pointer_y, 0);
+        }
+        break;
+    case 275: // X1
+        if (state == WL_POINTER_BUTTON_STATE_PRESSED) {
+            nk_input_button(&(win->rawfb->ctx), NK_BUTTON_X1, win->mouse_pointer_x, win->mouse_pointer_y, 1);
+        } else if (state == WL_POINTER_BUTTON_STATE_RELEASED) {
+            nk_input_button(&(win->rawfb->ctx), NK_BUTTON_X1, win->mouse_pointer_x, win->mouse_pointer_y, 0);
+        }
+        break;
+    case 276: // X2
+        if (state == WL_POINTER_BUTTON_STATE_PRESSED) {
+            nk_input_button(&(win->rawfb->ctx), NK_BUTTON_X2, win->mouse_pointer_x, win->mouse_pointer_y, 1);
+        } else if (state == WL_POINTER_BUTTON_STATE_RELEASED) {
+            nk_input_button(&(win->rawfb->ctx), NK_BUTTON_X2, win->mouse_pointer_x, win->mouse_pointer_y, 0);
+        }
+        break;
     }
 }
 
@@ -450,6 +483,12 @@ int main ()
     struct nk_wayland nk_wayland_ctx;
     struct wl_registry *registry;
     int running = 1;
+    struct rawfb_pl pl;
+
+    #ifdef INCLUDE_CONFIGURATOR
+    static struct nk_color color_table[NK_COLOR_COUNT];
+    memcpy(color_table, nk_default_color_style, sizeof(color_table));
+    #endif
 
     //1. Initialize display
 	nk_wayland_ctx.display = wl_display_connect (NULL);
@@ -495,7 +534,17 @@ int main ()
     wl_surface_attach (nk_wayland_ctx.surface, nk_wayland_ctx.front_buffer, 0, 0);
     wl_surface_commit (nk_wayland_ctx.surface);
 
-    nk_rawfb_init(nk_wayland_ctx.data, nk_wayland_ctx.tex_scratch, WIDTH, HEIGHT, WIDTH*4, PIXEL_LAYOUT_XRGB_8888);
+    pl.bytesPerPixel = 4;
+    pl.ashift = 24;
+    pl.rshift = 16;
+    pl.gshift = 8;
+    pl.bshift = 0;
+    pl.aloss = 0;
+    pl.rloss = 0;
+    pl.gloss = 0;
+    pl.bloss = 0;
+
+    nk_wayland_ctx.rawfb = nk_rawfb_init(nk_wayland_ctx.data, nk_wayland_ctx.tex_scratch, WIDTH, HEIGHT, WIDTH*4, pl);
 
 
     //4. rendering UI
@@ -533,6 +582,9 @@ int main ()
         #endif
         #ifdef INCLUDE_OVERVIEW
           overview(&(nk_wayland_ctx.rawfb->ctx));
+        #endif
+        #ifdef INCLUDE_CONFIGURATOR
+          style_configurator(&(nk_wayland_ctx.rawfb->ctx), color_table);
         #endif
         #ifdef INCLUDE_NODE_EDITOR
           node_editor(&(nk_wayland_ctx.rawfb->ctx));

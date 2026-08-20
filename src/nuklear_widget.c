@@ -7,7 +7,7 @@
  *
  * ===============================================================*/
 NK_API struct nk_rect
-nk_widget_bounds(struct nk_context *ctx)
+nk_widget_bounds(const struct nk_context *ctx)
 {
     struct nk_rect bounds;
     NK_ASSERT(ctx);
@@ -18,7 +18,7 @@ nk_widget_bounds(struct nk_context *ctx)
     return bounds;
 }
 NK_API struct nk_vec2
-nk_widget_position(struct nk_context *ctx)
+nk_widget_position(const struct nk_context *ctx)
 {
     struct nk_rect bounds;
     NK_ASSERT(ctx);
@@ -30,7 +30,7 @@ nk_widget_position(struct nk_context *ctx)
     return nk_vec2(bounds.x, bounds.y);
 }
 NK_API struct nk_vec2
-nk_widget_size(struct nk_context *ctx)
+nk_widget_size(const struct nk_context *ctx)
 {
     struct nk_rect bounds;
     NK_ASSERT(ctx);
@@ -42,7 +42,7 @@ nk_widget_size(struct nk_context *ctx)
     return nk_vec2(bounds.w, bounds.h);
 }
 NK_API float
-nk_widget_width(struct nk_context *ctx)
+nk_widget_width(const struct nk_context *ctx)
 {
     struct nk_rect bounds;
     NK_ASSERT(ctx);
@@ -54,7 +54,7 @@ nk_widget_width(struct nk_context *ctx)
     return bounds.w;
 }
 NK_API float
-nk_widget_height(struct nk_context *ctx)
+nk_widget_height(const struct nk_context *ctx)
 {
     struct nk_rect bounds;
     NK_ASSERT(ctx);
@@ -66,13 +66,14 @@ nk_widget_height(struct nk_context *ctx)
     return bounds.h;
 }
 NK_API nk_bool
-nk_widget_is_hovered(struct nk_context *ctx)
+nk_widget_is_hovered(const struct nk_context *ctx)
 {
     struct nk_rect c, v;
     struct nk_rect bounds;
     NK_ASSERT(ctx);
     NK_ASSERT(ctx->current);
-    if (!ctx || !ctx->current || ctx->active != ctx->current)
+    NK_ASSERT(ctx->current->layout);
+    if (!ctx || !ctx->current || !ctx->current->layout || (ctx->active != ctx->current && !((int)ctx->current->layout->type & (int)NK_PANEL_SET_POPUP)))
         return 0;
 
     c = ctx->current->layout->clip;
@@ -88,13 +89,14 @@ nk_widget_is_hovered(struct nk_context *ctx)
     return nk_input_is_mouse_hovering_rect(&ctx->input, bounds);
 }
 NK_API nk_bool
-nk_widget_is_mouse_clicked(struct nk_context *ctx, enum nk_buttons btn)
+nk_widget_is_mouse_clicked(const struct nk_context *ctx, enum nk_buttons btn)
 {
     struct nk_rect c, v;
     struct nk_rect bounds;
     NK_ASSERT(ctx);
     NK_ASSERT(ctx->current);
-    if (!ctx || !ctx->current || ctx->active != ctx->current)
+    NK_ASSERT(ctx->current->layout);
+    if (!ctx || !ctx->current || !ctx->current->layout || (ctx->active != ctx->current && !((int)ctx->current->layout->type & (int)NK_PANEL_SET_POPUP)))
         return 0;
 
     c = ctx->current->layout->clip;
@@ -110,13 +112,14 @@ nk_widget_is_mouse_clicked(struct nk_context *ctx, enum nk_buttons btn)
     return nk_input_mouse_clicked(&ctx->input, btn, bounds);
 }
 NK_API nk_bool
-nk_widget_has_mouse_click_down(struct nk_context *ctx, enum nk_buttons btn, nk_bool down)
+nk_widget_has_mouse_click_down(const struct nk_context *ctx, enum nk_buttons btn, nk_bool down)
 {
     struct nk_rect c, v;
     struct nk_rect bounds;
     NK_ASSERT(ctx);
     NK_ASSERT(ctx->current);
-    if (!ctx || !ctx->current || ctx->active != ctx->current)
+    NK_ASSERT(ctx->current->layout);
+    if (!ctx || !ctx->current || !ctx->current->layout || (ctx->active != ctx->current && !((int)ctx->current->layout->type & (int)NK_PANEL_SET_POPUP)))
         return 0;
 
     c = ctx->current->layout->clip;
@@ -180,23 +183,6 @@ nk_widget(struct nk_rect *bounds, const struct nk_context *ctx)
     if (!NK_INBOX(in->mouse.pos.x, in->mouse.pos.y, v.x, v.y, v.w, v.h))
         return NK_WIDGET_ROM;
     return NK_WIDGET_VALID;
-}
-NK_API enum nk_widget_layout_states
-nk_widget_fitting(struct nk_rect *bounds, struct nk_context *ctx,
-    struct nk_vec2 item_padding)
-{
-    /* update the bounds to stand without padding  */
-    enum nk_widget_layout_states state;
-    NK_UNUSED(item_padding);
-
-    NK_ASSERT(ctx);
-    NK_ASSERT(ctx->current);
-    NK_ASSERT(ctx->current->layout);
-    if (!ctx || !ctx->current || !ctx->current->layout)
-        return NK_WIDGET_INVALID;
-
-    state = nk_widget(bounds, ctx);
-    return state;
 }
 NK_API void
 nk_spacing(struct nk_context *ctx, int cols)

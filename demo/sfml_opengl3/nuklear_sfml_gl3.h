@@ -66,6 +66,7 @@ static struct nk_sfml {
     struct nk_sfml_device ogl;
     struct nk_context ctx;
     struct nk_font_atlas atlas;
+    sf::Clock* frame_delta_clock;
 } sfml;
 
 #ifdef __APPLE__
@@ -197,11 +198,15 @@ nk_sfml_render(enum nk_anti_aliasing AA, int max_vertex_buffer, int max_element_
     int window_width = sfml.window->getSize().x;
     int window_height = sfml.window->getSize().y;
     GLfloat ortho[4][4] = {
-        {2.0f, 0.0f, 0.0f, 0.0f},
-        {0.0f,-2.0f, 0.0f, 0.0f},
-        {0.0f, 0.0f,-1.0f, 0.0f},
-        {-1.0f,1.0f, 0.0f, 1.0f},
+        {  2.0f,  0.0f,  0.0f, 0.0f },
+        {  0.0f, -2.0f,  0.0f, 0.0f },
+        {  0.0f,  0.0f, -1.0f, 0.0f },
+        { -1.0f,  1.0f,  0.0f, 1.0f },
     };
+
+    sfml.ctx.delta_time_seconds = (float)((double)sfml.frame_delta_clock->getElapsedTime().asMicroseconds() / 1000000);
+    sfml.frame_delta_clock->restart();
+
     ortho[0][0] /= (GLfloat)window_width;
     ortho[1][1] /= (GLfloat)window_height;
 
@@ -336,6 +341,7 @@ nk_sfml_init(sf::Window* window)
     sfml.ctx.clip.paste = nk_sfml_clipboard_paste;
     sfml.ctx.clip.userdata = nk_handle_ptr(0);
     nk_sfml_device_create();
+    sfml.frame_delta_clock = new sf::Clock();
     return &sfml.ctx;
 }
 
@@ -376,11 +382,13 @@ nk_sfml_handle_event(sf::Event* evt)
     {
         int down = evt->type == sf::Event::KeyPressed;
         sf::Keyboard::Key key = evt->key.code;
-        if(key == sf::Keyboard::RShift || key == sf::Keyboard::LShift)
+        if(key == sf::Keyboard::LAlt || key == sf::Keyboard::RAlt)
+            nk_input_key(ctx, NK_KEY_ALT, down);
+        else if(key == sf::Keyboard::RShift || key == sf::Keyboard::LShift)
             nk_input_key(ctx, NK_KEY_SHIFT, down);
         else if(key == sf::Keyboard::Delete)
             nk_input_key(ctx, NK_KEY_DEL, down);
-        else if(key == sf::Keyboard::Return)
+        else if(key == sf::Keyboard::Enter)
             nk_input_key(ctx, NK_KEY_ENTER, down);
         else if(key == sf::Keyboard::Tab)
             nk_input_key(ctx, NK_KEY_TAB, down);
@@ -396,6 +404,30 @@ nk_sfml_handle_event(sf::Event* evt)
             nk_input_key(ctx, NK_KEY_SCROLL_DOWN, down);
         else if(key == sf::Keyboard::PageUp)
             nk_input_key(ctx, NK_KEY_SCROLL_DOWN, down);
+        else if(key == sf::Keyboard::F1)
+            nk_input_key(ctx, NK_KEY_F1, down);
+        else if(key == sf::Keyboard::F2)
+            nk_input_key(ctx, NK_KEY_F2, down);
+        else if(key == sf::Keyboard::F3)
+            nk_input_key(ctx, NK_KEY_F3, down);
+        else if(key == sf::Keyboard::F4)
+            nk_input_key(ctx, NK_KEY_F4, down);
+        else if(key == sf::Keyboard::F5)
+            nk_input_key(ctx, NK_KEY_F5, down);
+        else if(key == sf::Keyboard::F6)
+            nk_input_key(ctx, NK_KEY_F6, down);
+        else if(key == sf::Keyboard::F7)
+            nk_input_key(ctx, NK_KEY_F7, down);
+        else if(key == sf::Keyboard::F8)
+            nk_input_key(ctx, NK_KEY_F8, down);
+        else if(key == sf::Keyboard::F9)
+            nk_input_key(ctx, NK_KEY_F9, down);
+        else if(key == sf::Keyboard::F10)
+            nk_input_key(ctx, NK_KEY_F10, down);
+        else if(key == sf::Keyboard::F11)
+            nk_input_key(ctx, NK_KEY_F11, down);
+        else if(key == sf::Keyboard::F12)
+            nk_input_key(ctx, NK_KEY_F12, down);
         else if(key == sf::Keyboard::Z)
             nk_input_key(ctx, NK_KEY_TEXT_UNDO, down && sf::Keyboard::isKeyPressed(sf::Keyboard::LControl));
         else if(key == sf::Keyboard::R)
@@ -433,6 +465,10 @@ nk_sfml_handle_event(sf::Event* evt)
             nk_input_button(ctx, NK_BUTTON_MIDDLE, x, y, down);
         if(evt->mouseButton.button == sf::Mouse::Right)
             nk_input_button(ctx, NK_BUTTON_RIGHT, x, y, down);
+        if(evt->mouseButton.button == sf::Mouse::XButton1)
+            nk_input_button(ctx, NK_BUTTON_X1, x, y, down);
+        if(evt->mouseButton.button == sf::Mouse::XButton2)
+            nk_input_button(ctx, NK_BUTTON_X2, x, y, down);
         else return 0;
         return 1;
     } else if(evt->type == sf::Event::MouseMoved) {
@@ -451,10 +487,10 @@ nk_sfml_handle_event(sf::Event* evt)
         } else nk_input_motion(ctx, evt->touch.x, evt->touch.y);
         return 1;
     } else if(evt->type == sf::Event::TextEntered) {
-		/* 8 ~ backspace */
-		if (evt->text.unicode != 8) {
-			nk_input_unicode(ctx, evt->text.unicode);
-		}
+        /* 8 ~ backspace */
+        if (evt->text.unicode != 8) {
+            nk_input_unicode(ctx, evt->text.unicode);
+        }
         return 1;
     } else if(evt->type == sf::Event::MouseWheelScrolled) {
         nk_input_scroll(ctx, nk_vec2(0,evt->mouseWheelScroll.delta));
@@ -469,6 +505,7 @@ void nk_sfml_shutdown()
     nk_font_atlas_clear(&sfml.atlas);
     nk_free(&sfml.ctx);
     nk_sfml_device_destroy();
+    delete sfml.frame_delta_clock;
     memset(&sfml, 0, sizeof(sfml));
 }
 
